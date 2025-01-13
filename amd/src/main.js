@@ -34,28 +34,19 @@ export default class PdfViewer extends Iframe {
         $message.addClass("hasiframe");
         super.renderContainer(annotation);
     }
-    /**
-     * Runs the interaction for the given annotation.
-     *
-     * @param {Object} annotation - The annotation object containing interaction details.
-     * @param {number} annotation.id - The unique identifier for the annotation.
-     * @param {boolean} annotation.completed - Indicates if the annotation has been completed.
-     * @param {number} annotation.hascompletion - Indicates if the annotation has completion tracking.
-     * @param {string} annotation.completiontracking - The type of completion tracking for the annotation.
-     * @param {string} annotation.displayoptions - The display options for the annotation.
-     *
-     * @returns {Promise<void>} - A promise that resolves when the interaction is complete.
-     */
-    async runInteraction(annotation) {
-        await this.player.pause();
 
+    /**
+     * Renders the content for the given annotation.
+     * @param {Object} annotation - The annotation object.
+     * @returns {Promise} - The promise object representing the content rendering.
+     */
+    async applyContent(annotation) {
         let self = this;
         /**
          * Monitors a PDF viewer within an iframe and toggles completion status based on the number of pages viewed.
          *
          * @param {Object} annotation - The annotation object containing the ID and completion status.
-         * @param {string} annotation.id - The unique identifier for the annotation.
-         * @param {boolean} annotation.completed - The completion status of the annotation.
+         * @returns {void}
          */
         const pdfCheck = (annotation) => {
             const checkIframe = () => {
@@ -66,14 +57,17 @@ export default class PdfViewer extends Iframe {
                 } catch (e) {
                     pdf = null;
                 }
-                if (pdf) {
-                    if (pdf.pagesCount == 1) { // Only one page.
+                if (pdf && pdf.pagesCount > 0) {
+                    window.console.log("PDF viewer loaded.");
+                    if (pdf.pagesCount === 1 || pdf._pages.length === 1) { // Only one page.
                         self.toggleCompletion(annotation.id, "mark-done", "automatic");
                     } else {
                         pdf.eventBus.on("pagechanging", function(e) {
                             if (e.pageNumber == pdf.pagesCount && !annotation.completed) {
                                 self.toggleCompletion(annotation.id, "mark-done", "automatic");
                                 annotation.completed = true;
+                                // Unbind the event listener.
+                                pdf.eventBus.off("pagechanging");
                             }
                         });
                     }
@@ -84,36 +78,18 @@ export default class PdfViewer extends Iframe {
             requestAnimationFrame(checkIframe);
         };
 
-        // Apply content.
-        const applyContent = async(annotation) => {
-            const data = await this.render(annotation, 'html');
-            $(`#message[data-id='${annotation.id}'] .modal-body`).attr('id', 'content').html(data).fadeIn(300);
-            if (annotation.hascompletion == 0 || annotation.completed) {
-                this.postContentRender(annotation);
-                return;
-            }
-            if (annotation.completiontracking == 'view') {
-                this.postContentRender(annotation);
-                this.toggleCompletion(annotation.id, "mark-done", "automatic");
-                return;
-            }
-            if (annotation.completiontracking == 'scrolltolastpage') {
-                this.postContentRender(annotation, pdfCheck(annotation));
-            }
-        };
-
-        await this.renderViewer(annotation);
-        this.renderContainer(annotation);
-        applyContent(annotation);
-
-        if (annotation.displayoptions == 'popup') {
-            $('#annotation-modal').on('shown.bs.modal', function() {
-                self.setModalDraggable('#annotation-modal .modal-dialog');
-            });
+        const data = await this.render(annotation, 'html');
+        $(`#message[data-id='${annotation.id}'] .modal-body`).attr('id', 'content').html(data).fadeIn(300);
+        this.postContentRender(annotation);
+        if (annotation.hascompletion == 0 || annotation.completed) {
+            return;
         }
-
-        if (annotation.completiontracking == 'manual') {
-            this.enableManualCompletion(annotation);
+        if (annotation.completiontracking == 'view') {
+            this.toggleCompletion(annotation.id, "mark-done", "automatic");
+            return;
+        }
+        if (annotation.completiontracking == 'scrolltolastpage') {
+            pdfCheck(annotation);
         }
     }
 }
