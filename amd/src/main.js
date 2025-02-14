@@ -58,7 +58,6 @@ export default class PdfViewer extends Iframe {
                     pdf = null;
                 }
                 if (pdf && pdf.pagesCount > 0) {
-                    window.console.log("PDF viewer loaded.");
                     if (pdf.pagesCount === 1 || pdf._pages.length === 1) { // Only one page.
                         self.toggleCompletion(annotation.id, "mark-done", "automatic");
                     } else {

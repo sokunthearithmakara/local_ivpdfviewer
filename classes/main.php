@@ -41,6 +41,7 @@ class main extends \ivplugin_richtext\main {
             'description' => get_string('pdfviewerdescription', 'local_ivpdfviewer'),
             'author' => 'tsmakara',
             'authorlink' => 'mailto:sokunthearithmakara@gmail.com',
+            'tutorial' => get_string('tutorialurl', 'local_ivpdfviewer'),
         ];
     }
 
@@ -71,6 +72,8 @@ class main extends \ivplugin_richtext\main {
                 '/local/ivpdfviewer/libraries/pdfjs/web/viewer.html?file=' .
                 $url . '#locale=' . $lang .
                 '" style="width: 100%; height: 100%" frameborder="0" allow="autoplay" class="rounded-0"></iframe>';
+        } else {
+            return '<div class="alert alert-danger" role="alert">' . get_string('nofile', 'local_ivpdfviewer') . '</div>';
         }
         return $arg;
     }

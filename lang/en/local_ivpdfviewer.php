@@ -25,9 +25,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['completiononscrolltolastpage'] = 'When the user scrolls to the last page';
+$string['completiononscrolltolastpage'] = 'View the last page';
+$string['nofile'] = 'No file found. It seems that the file has been deleted.';
 $string['pdffile'] = 'PDF file';
 $string['pdfviewercontent'] = 'PDF document';
 $string['pdfviewerdescription'] = 'Upload a PDF file to be displayed in the video.';
 $string['pluginname'] = 'PDF document';
 $string['privacy:metadata'] = 'The PDF document plugin doesn\'t store any personal data.';
+$string['tutorialurl'] = 'https://www.youtube.com/watch?v=2lKaL6ChhIE';
