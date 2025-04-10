@@ -22,6 +22,7 @@
  */
 import $ from 'jquery';
 import Iframe from 'ivplugin_iframe/main';
+
 export default class PdfViewer extends Iframe {
     /**
      * Renders the container for the given annotation.
@@ -46,9 +47,11 @@ export default class PdfViewer extends Iframe {
          * Monitors a PDF viewer within an iframe and toggles completion status based on the number of pages viewed.
          *
          * @param {Object} annotation - The annotation object containing the ID and completion status.
+         * @param {string} log - The log data for the annotation.
+         * @param {boolean} getLog - Flag indicating whether to retrieve the log.
          * @returns {void}
          */
-        const pdfCheck = (annotation) => {
+        const pdfCheck = (annotation, log, getLog) => {
             const checkIframe = () => {
                 const iframe = document.querySelector(`#message[data-id='${annotation.id}'] iframe`);
                 let pdf;
@@ -58,15 +61,90 @@ export default class PdfViewer extends Iframe {
                     pdf = null;
                 }
                 if (pdf && pdf.pagesCount > 0) {
-                    if (pdf.pagesCount === 1 || pdf._pages.length === 1) { // Only one page.
+                    window.pdf = pdf;
+                    let pageToDisplay = annotation.char1; // Format 1-3,10.
+                    // Let's build an array of pages to display.
+                    let pages = [];
+                    if (pageToDisplay && pageToDisplay !== "") {
+                        pages = pageToDisplay.split(",").map((page) => {
+                            let range = page.split("-");
+                            if (range.length > 1) {
+                                return Array.from({length: range[1] - range[0] + 1}, (_, i) => i + parseInt(range[0]));
+                            } else {
+                                return parseInt(page);
+                            }
+                        }).flat();
+                    } else {
+                        pages = Array.from({length: pdf.pagesCount}, (_, i) => i + 1);
+                    }
+                    // Get the pages to remove.
+                    let pagesToRemove = [];
+                    for (let i = 1; i <= pdf.pagesCount; i++) {
+                        if (!pages.includes(i)) {
+                            pagesToRemove.push(i);
+                        }
+                    }
+                    const lastPage = Math.max(...pages);
+                    pdf.eventBus.on("pagesloaded", function() {
+                        pagesToRemove.forEach((page) => {
+                            let pageElement =
+                                iframe.contentWindow.document.querySelector(`.page[data-page-number='${page}']`);
+                            if (pageElement) {
+                                pageElement.style.height = "0";
+                                pageElement.style.margin = "0";
+                                pageElement.style.border = "0";
+                                $(pageElement).empty();
+                            }
+                            let thumbnailElement = iframe.contentWindow.document
+                                .querySelector(`.thumbnail[data-page-number='${page}']`);
+                            if (thumbnailElement) {
+                                thumbnailElement.style.height = "0";
+                                thumbnailElement.style.margin = "0";
+                                thumbnailElement.style.border = "0";
+                                thumbnailElement.style.overflow = "hidden";
+                                // Hide <a> parent.
+                                let parent = thumbnailElement.parentElement;
+                                if (parent) {
+                                    parent.style.display = "none";
+                                }
+                            }
+                        });
+                    });
+
+                    if (log != '') { // Log is the last page viewed.
+                        pdf.currentPageNumber = Number(log);
+                    }
+
+                    if (getLog) {
+                        $(document).on('interactionclose interactionrefresh', async function(e) {
+                            if (e.detail.annotation.id == annotation.id) {
+                                try {
+                                    let page = window.pdf.currentPageNumber;
+                                    await self.saveLog(annotation, {
+                                        text1: page,
+                                        char1: annotation.type,
+                                    }, self.userid, true);
+                                } catch (e) {
+                                    window.console.log('Error: ', e);
+                                }
+                            }
+                        });
+                    }
+
+                    if (self.isEditMode()) {
+                        return;
+                    }
+
+                    if ((pdf.pagesCount === 1 || pdf._pages.length === 1 || pages.length <= 1)
+                        && !annotation.completed && annotation.completiontracking == 'scrolltolastpage') { // Only one page.
                         self.toggleCompletion(annotation.id, "mark-done", "automatic");
                     } else {
                         pdf.eventBus.on("pagechanging", function(e) {
-                            if (e.pageNumber == pdf.pagesCount && !annotation.completed) {
-                                self.toggleCompletion(annotation.id, "mark-done", "automatic");
-                                annotation.completed = true;
-                                // Unbind the event listener.
-                                pdf.eventBus.off("pagechanging");
+                            if (!annotation.completed && annotation.completiontracking == 'scrolltolastpage') {
+                                if (e.pageNumber == lastPage && !annotation.completed) {
+                                    self.toggleCompletion(annotation.id, "mark-done", "automatic");
+                                    annotation.completed = true;
+                                }
                             }
                         });
                     }
@@ -85,15 +163,32 @@ export default class PdfViewer extends Iframe {
 
         $(`#message[data-id='${annotation.id}'] .modal-body`).attr('id', 'content').html(data).fadeIn(300);
         this.postContentRender(annotation);
+        if (self.isEditMode()) {
+            pdfCheck(annotation, '', false);
+            return;
+        }
+        let log = '';
+        let getLog = false;
+        let adv = JSON.parse(annotation.advanced);
+        if (adv.savepagebefore && adv.savepagebefore != 0 && annotation.completed == false) {
+            getLog = true;
+        }
+        if (adv.savepageafter && adv.savepageafter != 0 && annotation.completed == true) {
+            getLog = true;
+        }
+        if (getLog) {
+            log = await self.getLogs(annotation, [self.userid]);
+            if (log.length > 0) {
+                log = log[0].text1;
+            }
+        }
+        pdfCheck(annotation, log, getLog);
         if (annotation.hascompletion == 0 || annotation.completed) {
             return;
         }
         if (annotation.completiontracking == 'view') {
             this.toggleCompletion(annotation.id, "mark-done", "automatic");
             return;
-        }
-        if (annotation.completiontracking == 'scrolltolastpage') {
-            pdfCheck(annotation);
         }
     }
 }

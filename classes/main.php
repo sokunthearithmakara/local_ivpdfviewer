@@ -71,7 +71,7 @@ class main extends \ivplugin_richtext\main {
             return '<iframe id="iframe" src="' . $CFG->wwwroot .
                 '/local/ivpdfviewer/libraries/pdfjs/web/viewer.html?file=' .
                 $url . '#locale=' . $lang .
-                '" style="width: 100%; height: 100%" frameborder="0" allow="autoplay" class="rounded-0"></iframe>';
+                '" style="width: 100%; height: 100%" frameborder="0" allow="autoplay" class="iv-rounded-0"></iframe>';
         } else {
             return '<div class="alert alert-danger" role="alert">' . get_string('nofile', 'local_ivpdfviewer') . '</div>';
         }

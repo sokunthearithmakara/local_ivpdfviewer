@@ -41,8 +41,24 @@ class form extends \mod_interactivevideo\form\base_form {
         file_prepare_draft_area($draftitemid, $data->contextid, 'mod_interactivevideo', 'content', $data->id);
 
         $data->content = $draftitemid;
-
+        if ($data->char1 == 'null') {
+            $data->char1 = '';
+        }
         $this->set_data($data);
+    }
+
+    /**
+     * Process advanced settings
+     *
+     * @param \stdClass $data
+     * @return string
+     */
+    public function process_advanced_settings($data) {
+        $adv = parent::process_advanced_settings($data);
+        $adv = json_decode($adv, true);
+        $adv['savepagebefore'] = $data->savepagebefore;
+        $adv['savepageafter'] = $data->savepageafter;
+        return json_encode($adv);
     }
 
     /**
@@ -76,7 +92,7 @@ class form extends \mod_interactivevideo\form\base_form {
 
         $this->standard_elements();
 
-        $mform->addElement('text', 'title', '<i class="bi bi-quote mr-2"></i>' . get_string('title', 'mod_interactivevideo'));
+        $mform->addElement('text', 'title', '<i class="bi bi-quote iv-mr-2"></i>' . get_string('title', 'mod_interactivevideo'));
         $mform->setType('title', PARAM_TEXT);
         $mform->setDefault('title', get_string('defaulttitle', 'mod_interactivevideo'));
         $mform->addRule('title', get_string('required'), 'required', null, 'client');
@@ -92,7 +108,7 @@ class form extends \mod_interactivevideo\form\base_form {
         $mform->addElement(
             'filemanager',
             'content',
-            '<i class="bi bi-file-pdf mr-2"></i>' . get_string('pdffile', 'local_ivpdfviewer'),
+            '<i class="bi bi-file-pdf iv-mr-2"></i>' . get_string('pdffile', 'local_ivpdfviewer'),
             null,
             $filemanageroptions
         );
@@ -103,6 +119,18 @@ class form extends \mod_interactivevideo\form\base_form {
             null,
             'client'
         );
+
+        // PDF page numbers.
+        $mform->addElement(
+            'text',
+            'char1',
+            '<i class="bi bi-book-half iv-mr-2"></i>' . get_string('pagenumbers', 'local_ivpdfviewer'),
+            [
+                'size' => 100,
+            ]
+        );
+        $mform->setType('char1', PARAM_TEXT);
+        $mform->addHelpButton('char1', 'pagenumbers', 'local_ivpdfviewer');
 
         $this->completion_tracking_field('none', [
             'none' => get_string('completionnone', 'mod_interactivevideo'),
@@ -116,6 +144,34 @@ class form extends \mod_interactivevideo\form\base_form {
         $this->advanced_form_fields([
             'hascompletion' => true,
         ]);
+
+        // Save page progress.
+        $group = [];
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'savepagebefore',
+            '',
+            get_string('beforecompletion', 'mod_interactivevideo'),
+            null,
+            [0, 1]
+        );
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'savepageafter',
+            '',
+            get_string('aftercompletion', 'mod_interactivevideo'),
+            null,
+            [0, 1]
+        );
+        $group[] = $mform->createElement(
+            'static',
+            'savepageprogressdesc',
+            '',
+            '<span class="text-muted small w-100 d-block">'
+                . get_string('savepageprogressdesc', 'local_ivpdfviewer') . '</span>'
+        );
+        $mform->addGroup($group, 'savepageprogressgroup', get_string('savepageprogress', 'local_ivpdfviewer'), '', false);
+
         $this->close_form();
     }
 }

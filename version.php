@@ -25,10 +25,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component    = 'local_ivpdfviewer';
-$plugin->release      = '1.0.2';
-$plugin->version      = 2025021000;
+$plugin->release      = '1.1';
+$plugin->version      = 2025041100;
 $plugin->requires     = 2022112800;
-$plugin->supported    = [401, 405];
+$plugin->supported    = [401, 500];
 $plugin->maturity     = MATURITY_STABLE;
 $plugin->dependencies = [
     'interactivevideo' => 2024042720,
