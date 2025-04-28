@@ -58,6 +58,7 @@ class form extends \mod_interactivevideo\form\base_form {
         $adv = json_decode($adv, true);
         $adv['savepagebefore'] = $data->savepagebefore;
         $adv['savepageafter'] = $data->savepageafter;
+        $adv['hidetools'] = $data->hidetools;
         return json_encode($adv);
     }
 
@@ -172,6 +173,15 @@ class form extends \mod_interactivevideo\form\base_form {
         );
         $mform->addGroup($group, 'savepageprogressgroup', get_string('savepageprogress', 'local_ivpdfviewer'), '', false);
 
+        $mform->addElement(
+            'advcheckbox',
+            'hidetools',
+            '',
+            get_string('hidetools', 'local_ivpdfviewer'),
+            null,
+            [0, 1]
+        );
+        $mform->setDefault('hidetools', 1);
         $this->close_form();
     }
 }

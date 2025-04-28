@@ -26,6 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['completiononscrolltolastpage'] = 'View the last page';
+$string['hidetools'] = 'Hide tools';
 $string['nofile'] = 'No file found. It seems that the file has been deleted.';
 $string['pagenumbers'] = 'Pages';
 $string['pagenumbers_help'] = 'The page numbers to be displayed. For example, 1,4-8,10-12. The page numbers are 1-based.';

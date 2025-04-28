@@ -43,6 +43,7 @@ export default class PdfViewer extends Iframe {
      */
     async applyContent(annotation) {
         let self = this;
+        let adv = JSON.parse(annotation.advanced);
         /**
          * Monitors a PDF viewer within an iframe and toggles completion status based on the number of pages viewed.
          *
@@ -86,17 +87,25 @@ export default class PdfViewer extends Iframe {
                     }
                     const lastPage = Math.max(...pages);
                     pdf.eventBus.on("pagesloaded", function() {
+                        let windowDocument = iframe.contentWindow.document;
+                        if (adv.hidetools) {
+                            let toolbar = windowDocument.querySelectorAll(`#toolbarViewerRight > *:not(#secondaryToolbarToggle),
+                                 #secondaryOpenFile, #secondaryPrint, #secondaryDownload`);
+                            if (toolbar.length > 0) {
+                                toolbar.forEach((element) => {
+                                    element.remove();
+                                });
+                            }
+                        }
                         pagesToRemove.forEach((page) => {
-                            let pageElement =
-                                iframe.contentWindow.document.querySelector(`.page[data-page-number='${page}']`);
+                            let pageElement = windowDocument.querySelector(`.page[data-page-number='${page}']`);
                             if (pageElement) {
                                 pageElement.style.height = "0";
                                 pageElement.style.margin = "0";
                                 pageElement.style.border = "0";
                                 $(pageElement).empty();
                             }
-                            let thumbnailElement = iframe.contentWindow.document
-                                .querySelector(`.thumbnail[data-page-number='${page}']`);
+                            let thumbnailElement = windowDocument.querySelector(`.thumbnail[data-page-number='${page}']`);
                             if (thumbnailElement) {
                                 thumbnailElement.style.height = "0";
                                 thumbnailElement.style.margin = "0";
@@ -169,7 +178,6 @@ export default class PdfViewer extends Iframe {
         }
         let log = '';
         let getLog = false;
-        let adv = JSON.parse(annotation.advanced);
         if (adv.savepagebefore && adv.savepagebefore != 0 && annotation.completed == false) {
             getLog = true;
         }
