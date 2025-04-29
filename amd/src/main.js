@@ -88,7 +88,7 @@ export default class PdfViewer extends Iframe {
                     const lastPage = Math.max(...pages);
                     pdf.eventBus.on("pagesloaded", function() {
                         let windowDocument = iframe.contentWindow.document;
-                        if (adv.hidetools) {
+                        if (adv.hidetools == 1) {
                             let toolbar = windowDocument.querySelectorAll(`#toolbarViewerRight > *:not(#secondaryToolbarToggle),
                                  #secondaryOpenFile, #secondaryPrint, #secondaryDownload`);
                             if (toolbar.length > 0) {
