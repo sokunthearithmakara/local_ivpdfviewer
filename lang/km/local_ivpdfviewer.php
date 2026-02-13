@@ -31,4 +31,3 @@ $string['pdfviewercontent'] = 'កម្មវិធីបង្ហាញ PDF';
 $string['pdfviewerdescription'] = 'បញ្ចូលឯកសារ PDF រួចបង្ហាញវាក្នុងខណៈណាមួយក្នុងវីដេអូ';
 $string['pluginname'] = 'កម្មវិធីបង្ហាញ PDF';
 $string['privacy:metadata'] = 'PDF Viewer មិនរក្សាទិន្នន័យបុគ្គលទេ។';
-
