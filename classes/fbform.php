@@ -23,14 +23,14 @@ namespace local_ivpdfviewer;
  * @copyright  2024 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class form extends \mod_interactivevideo\form\base_form {
+class fbform extends \mod_flexbook\form\base_form {
     /**
      * Sets data for dynamic submission
      * @return void
      */
     public function set_data_for_dynamic_submission(): void {
         $data = $this->set_data_default();
-        $data = \local_ivpdfviewer\helper::prepare_pdf_data($data, 'mod_interactivevideo');
+        $data = \local_ivpdfviewer\helper::prepare_pdf_data($data, 'mod_flexbook');
         $this->set_data($data);
     }
 
@@ -52,7 +52,7 @@ class form extends \mod_interactivevideo\form\base_form {
      */
     public function process_dynamic_submission() {
         $fromform = parent::process_dynamic_submission();
-        \local_ivpdfviewer\helper::save_pdf_data($fromform, 'mod_interactivevideo');
+        \local_ivpdfviewer\helper::save_pdf_data($fromform, 'mod_flexbook');
         return $fromform;
     }
 
@@ -76,10 +76,12 @@ class form extends \mod_interactivevideo\form\base_form {
         ]);
         $this->xp_form_field();
         $mform->hideIf('xp', 'completiontracking', 'eq', 'none');
-        $this->display_options_field();
+
         $this->advanced_form_fields([
             'hascompletion' => true,
         ]);
+
+        $this->jump_section_fields(true);
         $this->close_form();
     }
 }

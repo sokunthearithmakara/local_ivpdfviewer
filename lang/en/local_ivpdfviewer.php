@@ -38,3 +38,4 @@ $string['privacy:metadata'] = 'The PDF document plugin doesn\'t store any person
 $string['savepageprogress'] = 'Save page progress';
 $string['savepageprogressdesc'] = 'If enabled, the page progress will be saved in the database and the users will be able to resume from the last page they viewed.';
 $string['tutorialurl'] = 'https://www.youtube.com/watch?v=2lKaL6ChhIE';
+$string['fbdescription'] = 'Display a PDF document';

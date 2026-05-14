@@ -16,34 +16,24 @@
 /**
  * PDF viewer
  *
- * @module     local_ivpdfviewer/main
+ * @module     local_ivpdfviewer/fbmain
  * @copyright  2024 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-import $ from 'jquery';
-import Iframe from 'ivplugin_iframe/main';
-import {pdfCheck} from 'local_ivpdfviewer/utils';
+import Iframe from 'ivplugin_iframe/fbmain';
+import Ajax from 'core/ajax';
+import {safeParse} from 'mod_flexbook/utils';
 
+import {pdfCheck} from 'local_ivpdfviewer/utils';
 
 export default class PdfViewer extends Iframe {
     /**
-     * Renders the container for the given annotation.
-     *
-     * @param {Object} annotation - The annotation object.
-     * @param {string} annotation.id - The ID of the annotation.
-     */
-    renderContainer(annotation) {
-        let $message = $(`#message[data-id='${annotation.id}']`);
-        $message.addClass("hasiframe");
-        super.renderContainer(annotation);
-    }
-
-    /**
      * Renders the content for the given annotation.
      * @param {Object} annotation - The annotation object.
+     * @param {Object} $message - The message object.
      * @returns {Promise} - The promise object representing the content rendering.
      */
-    async applyContent(annotation) {
+    async applyContent(annotation, $message = null) {
         let self = this;
         let adv = JSON.parse(annotation.advanced);
 
@@ -53,8 +43,8 @@ export default class PdfViewer extends Iframe {
         }
         const data = self.cache[annotation.id];
 
-        $(`#message[data-id='${annotation.id}'] .modal-body`).attr('id', 'content').html(data).fadeIn(300);
-        this.postContentRender(annotation);
+        $message.find('.modal-body').attr('id', 'content').html(data).fadeIn(300);
+        this.postContentRender(annotation, $message);
         if (self.isEditMode()) {
             pdfCheck(annotation, '', false, adv, self);
             return;
@@ -69,6 +59,7 @@ export default class PdfViewer extends Iframe {
         }
         if (getLog) {
             log = await self.getLogs(annotation, [self.userid]);
+            window.console.log(log);
             if (log.length > 0) {
                 log = log[0].text1;
             }
@@ -77,17 +68,55 @@ export default class PdfViewer extends Iframe {
         if (annotation.hascompletion == 0 || annotation.completed) {
             return;
         }
+
         this.completiononview(annotation);
+
+    }
+
+
+    /**
+     * Handle drag and drop creation.
+     *
+     * @param {Array} annotations
+     * @param {File} file
+     * @param {Object} response
+     * @param {number} anchorid
+     */
+    async dnd(annotations, file, response, anchorid = 0) {
+        const result = await Ajax.call([{
+            methodname: 'mod_flexbook_create_interaction',
+            args: {
+                contextid: M.cfg.contextid,
+                courseid: this.course,
+                cmid: this.cm,
+                annotationid: this.flexbook,
+                type: this.prop.name,
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                draftitemid: response.draftitemid || 0,
+                anchorid: anchorid
+            }
+        }])[0];
+
+        const newItem = safeParse(result.data, {});
+        this.dispatchEvent('annotationupdated', {
+            annotation: newItem,
+            action: 'add',
+            anchorid: anchorid,
+            isDnD: true
+        });
     }
 
     /**
      * Override the displayReportView method.
      *
      * @param {Object} annotation - The annotation object.
+     * @param {Array} tabledatajson - The table data json.
+     * @param {Object} DataTable - The data table.
+     * @param {jQuery} root - The root element.
      * @returns {void}
      */
-    async displayReportView(annotation) {
-        await super.displayReportView(annotation);
+    async displayReportView(annotation, tabledatajson, DataTable, root) {
+        await super.displayReportView(annotation, tabledatajson, DataTable, root);
         let adv = JSON.parse(annotation.advanced);
         pdfCheck(annotation, '', false, adv, this);
     }

@@ -33,3 +33,15 @@ function local_ivpdfviewer_ivplugin() {
         'name' => 'pdfviewer',
     ];
 }
+
+/**
+ * Provides plugin information for ivpdfviewer.
+ *
+ * @return array Plugin information.
+ */
+function local_ivpdfviewer_fbplugin() {
+    return [
+        'class' => 'local_ivpdfviewer\\main',
+        'name' => 'pdfviewer',
+    ];
+}
