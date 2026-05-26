@@ -26,8 +26,13 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['completiononscrolltolastpage'] = 'នៅពេលដែលអានដល់ទំព័រចុងក្រោយ';
+$string['externalurl'] = 'URL ខាងក្រៅ (សាធារណៈ)';
+$string['invalidurl'] = 'សូមបញ្ចូល URL ត្រឹមត្រូវ (ចាប់ផ្តើមដោយ http:// ឬ https://)';
 $string['pdffile'] = 'ឯកសារ PDF';
 $string['pdfviewercontent'] = 'កម្មវិធីបង្ហាញ PDF';
 $string['pdfviewerdescription'] = 'បញ្ចូលឯកសារ PDF រួចបង្ហាញវាក្នុងខណៈណាមួយក្នុងវីដេអូ';
 $string['pluginname'] = 'កម្មវិធីបង្ហាញ PDF';
 $string['privacy:metadata'] = 'PDF Viewer មិនរក្សាទិន្នន័យបុគ្គលទេ។';
+$string['sourcefile'] = 'ឯកសារ PDF ក្នុងមូល';
+$string['sourcetype'] = 'ប្រភេទប្រភព';
+$string['sourceurl'] = 'URL ខាងក្រៅ (សាធារណៈ)';

@@ -82,31 +82,24 @@ export const pdfCheck = (annotation, log, getLog, adv, instance) => {
                     toolbar.forEach((element) => element.remove());
                 }
 
-                // Inject CSS to hide pages and thumbnails completely.
-                // This is more efficient and removes the empty space more reliably than manual style updates.
-                const styleId = 'pdf-hide-pages-style';
-                let existingStyle = windowDocument.getElementById(styleId);
-                if (existingStyle) {
-                    existingStyle.remove();
-                }
-
-                const style = windowDocument.createElement('style');
-                style.id = styleId;
-                style.innerHTML = pagesToRemove.map(page => `
-                    .page[data-page-number='${page}'],
-                    .thumbnail[data-page-number='${page}'] {
-                        display: none !important;
-                    }
-                `).join('\n');
-                windowDocument.head.appendChild(style);
-
-                // Additional cleanup for thumbnail wrappers which often cause extra spacing.
                 pagesToRemove.forEach((page) => {
+                    let pageElement = windowDocument.querySelector(`.page[data-page-number='${page}']`);
+                    if (pageElement) {
+                        pageElement.style.height = "0";
+                        pageElement.style.margin = "0";
+                        pageElement.style.border = "0";
+                        $(pageElement).empty();
+                    }
                     let thumbnailElement = windowDocument.querySelector(`.thumbnail[data-page-number='${page}']`);
                     if (thumbnailElement) {
+                        thumbnailElement.style.height = "0";
+                        thumbnailElement.style.margin = "0";
+                        thumbnailElement.style.border = "0";
+                        thumbnailElement.style.overflow = "hidden";
+                        // Hide <a> parent.
                         let parent = thumbnailElement.parentElement;
-                        if (parent && (parent.tagName === 'A' || parent.classList.contains('thumbnailContainer'))) {
-                            parent.style.setProperty('display', 'none', 'important');
+                        if (parent) {
+                            parent.style.display = "none";
                         }
                     }
                 });
@@ -114,6 +107,71 @@ export const pdfCheck = (annotation, log, getLog, adv, instance) => {
                 // Tell PDF.js to recalculate its internal layout/scroll positions.
                 if (typeof pdf.update === 'function') {
                     pdf.update();
+                }
+
+                // Add scroll listener to detect reaching the last page/bottom.
+                if (!instance.isEditMode()) {
+                    const viewerContainer = windowDocument.getElementById('viewerContainer');
+                    if (viewerContainer) {
+                        viewerContainer.addEventListener('scroll', function() {
+                            // Calculate which visible page is currently most prominent in the viewport.
+                            let activePage = lastPage;
+                            let maxVisibleHeight = 0;
+                            const containerRect = viewerContainer.getBoundingClientRect();
+
+                            pages.forEach(function(p) {
+                                const pageEl = windowDocument.querySelector(`.page[data-page-number='${p}']`);
+                                if (pageEl) {
+                                    const rect = pageEl.getBoundingClientRect();
+                                    const visibleTop = Math.max(rect.top, containerRect.top);
+                                    const visibleBottom = Math.min(rect.bottom, containerRect.bottom);
+                                    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+                                    if (visibleHeight > maxVisibleHeight) {
+                                        maxVisibleHeight = visibleHeight;
+                                        activePage = p;
+                                    }
+                                }
+                            });
+
+                            if (activePage && activePage !== pdf.currentPageNumber) {
+                                pdf._currentPageNumber = activePage;
+
+                                // Synchronize with Flexbook state directly.
+                                if (instance.isFlexbook && getLog) {
+                                    const state = instance.state;
+                                    if (state && state.interactionData) {
+                                        if (!state.interactionData[annotation.id]) {
+                                            state.interactionData[annotation.id] = {t: 0, v: 0};
+                                        }
+                                        state.interactionData[annotation.id].pdf = activePage;
+                                    }
+                                }
+
+                                // Trigger pagechanging event on the eventBus so PDF.js UI updates as well!
+                                if (pdf.eventBus && typeof pdf.eventBus.dispatch === 'function') {
+                                    try {
+                                        pdf.eventBus.dispatch('pagechanging', {
+                                            pageNumber: activePage,
+                                            source: pdf
+                                        });
+                                    } catch (e) {
+                                        // Ignore.
+                                    }
+                                }
+                            }
+
+                            if (!annotation.completed && annotation.completiontracking == 'scrolltolastpage') {
+                                const threshold = 50; // 50px tolerance
+                                const scrolledToBottom = viewerContainer.scrollHeight -
+                                    viewerContainer.scrollTop -
+                                    viewerContainer.clientHeight < threshold;
+                                if (scrolledToBottom) {
+                                    instance.toggleCompletion(annotation.id, "mark-done", "automatic");
+                                    annotation.completed = true;
+                                }
+                            }
+                        });
+                    }
                 }
             });
 
@@ -125,7 +183,19 @@ export const pdfCheck = (annotation, log, getLog, adv, instance) => {
             const ns = `.pdfviewer_${annotation.id}`;
             $(document).off(`interactionclose${ns} interactionrefresh${ns}`);
 
-            if (getLog) {
+            if (instance.isFlexbook && getLog) {
+                pdf.eventBus.on("pagechanging", function(e) {
+                    const state = instance.state;
+                    if (state && state.interactionData) {
+                        if (!state.interactionData[annotation.id]) {
+                            state.interactionData[annotation.id] = {t: 0, v: 0};
+                        }
+                        state.interactionData[annotation.id].pdf = e.pageNumber;
+                    }
+                });
+            }
+
+            if (getLog && !instance.isFlexbook) {
                 let savedpage = log;
                 $(document).on(`interactionclose${ns} interactionrefresh${ns}`, async function(e) {
                     if (e.detail.annotation.id == annotation.id && savedpage != pdf.currentPageNumber) {
@@ -156,15 +226,6 @@ export const pdfCheck = (annotation, log, getLog, adv, instance) => {
             if ((pdf.pagesCount === 1 || pdf._pages.length === 1 || pages.length <= 1)
                 && !annotation.completed && annotation.completiontracking == 'scrolltolastpage') {
                 instance.toggleCompletion(annotation.id, "mark-done", "automatic");
-            } else {
-                pdf.eventBus.on("pagechanging", function(e) {
-                    if (!annotation.completed && annotation.completiontracking == 'scrolltolastpage') {
-                        if (e.pageNumber == lastPage && !annotation.completed) {
-                            instance.toggleCompletion(annotation.id, "mark-done", "automatic");
-                            annotation.completed = true;
-                        }
-                    }
-                });
             }
         } else if (retries < maxRetries) {
             retries++;

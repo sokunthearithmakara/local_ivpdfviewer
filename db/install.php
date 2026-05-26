@@ -30,10 +30,15 @@
  * @return bool
  */
 function xmldb_local_ivpdfviewer_install() {
-    $config = get_config('mod_interactivevideo', 'enablecontenttypes');
-    $config = explode(',', $config);
+    $config = array_filter(explode(',', get_config('mod_interactivevideo', 'enablecontenttypes') ?: ''));
     $config[] = 'local_ivpdfviewer';
-    // Save the new configuration.
-    set_config('enablecontenttypes', implode(',', $config), 'mod_interactivevideo');
+    set_config('enablecontenttypes', implode(',', array_unique($config)), 'mod_interactivevideo');
+
+    if (get_config('mod_flexbook', 'version')) {
+        $config = array_filter(explode(',', get_config('mod_flexbook', 'enablecontenttypes') ?: ''));
+        $config[] = 'local_ivpdfviewer';
+        set_config('enablecontenttypes', implode(',', array_unique($config)), 'mod_flexbook');
+    }
+
     return true;
 }

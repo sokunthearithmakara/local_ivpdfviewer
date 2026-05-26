@@ -25,8 +25,16 @@ import Ajax from 'core/ajax';
 import {safeParse} from 'mod_flexbook/utils';
 
 import {pdfCheck} from 'local_ivpdfviewer/utils';
+import state from 'mod_flexbook/state';
 
 export default class PdfViewer extends Iframe {
+    /**
+     * Called when the edit form is loaded.
+     * @return {void}
+     */
+    onEditFormLoaded() {
+        // Do nothing.
+    }
     /**
      * Renders the content for the given annotation.
      * @param {Object} annotation - The annotation object.
@@ -36,6 +44,9 @@ export default class PdfViewer extends Iframe {
     async applyContent(annotation, $message = null) {
         let self = this;
         let adv = JSON.parse(annotation.advanced);
+
+        self.isFlexbook = true;
+        self.state = state;
 
         // We don't need to run the render method every time the content is applied. We can cache the content.
         if (!self.cache[annotation.id] || self.isEditMode()) {
@@ -58,10 +69,8 @@ export default class PdfViewer extends Iframe {
             getLog = true;
         }
         if (getLog) {
-            log = await self.getLogs(annotation, [self.userid]);
-            window.console.log(log);
-            if (log.length > 0) {
-                log = log[0].text1;
+            if (state.interactionData && state.interactionData[annotation.id] && state.interactionData[annotation.id].pdf) {
+                log = state.interactionData[annotation.id].pdf;
             }
         }
         pdfCheck(annotation, log, getLog, adv, self);

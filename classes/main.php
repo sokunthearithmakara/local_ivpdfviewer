@@ -102,34 +102,43 @@ class main extends \ivplugin_richtext\main {
     public function get_content($arg) {
         global $CFG;
         $lang = current_language();
-        $fs = get_file_storage();
-        $files = $fs->get_area_files(
-            $arg["contextid"],
-            'mod_' . (isset($arg['plugin']) ? $arg['plugin'] : 'interactivevideo'),
-            'content',
-            $arg["id"],
-            'id DESC',
-            false
-        );
-        $file = reset($files);
-        if ($file) {
-            $url = \moodle_url::make_pluginfile_url(
-                $file->get_contextid(),
-                $file->get_component(),
-                $file->get_filearea(),
-                $file->get_itemid(),
-                $file->get_filepath(),
-                $file->get_filename(),
-            )->out();
+        $url = '';
+
+        $iframeurl = helper::normalize_iframeurl($arg['iframeurl'] ?? '');
+        if (!empty($iframeurl)) {
+            $url = $iframeurl;
+        } else {
+            $fs = get_file_storage();
+            $files = $fs->get_area_files(
+                $arg["contextid"],
+                'mod_' . (isset($arg['plugin']) ? $arg['plugin'] : 'interactivevideo'),
+                'content',
+                $arg["id"],
+                'id DESC',
+                false
+            );
+            $file = reset($files);
+            if ($file) {
+                $url = \moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename(),
+                )->out();
+            }
+        }
+
+        if ($url) {
             // Encode URL for PDF.js.
             $url = urlencode($url);
             return '<iframe id="iframe" src="' . $CFG->wwwroot .
                 '/local/ivpdfviewer/libraries/pdfjs/web/viewer.html?file=' .
                 $url . '#locale=' . $lang .
                 '" style="width: 100%; height: 100%" frameborder="0" allow="autoplay" class="iv-rounded-0"></iframe>';
-        } else {
-            return '<div class="alert alert-danger" role="alert">' . get_string('nofile', 'local_ivpdfviewer') . '</div>';
         }
-        return $arg;
+
+        return '<div class="alert alert-danger" role="alert">' . get_string('nofile', 'local_ivpdfviewer') . '</div>';
     }
 }

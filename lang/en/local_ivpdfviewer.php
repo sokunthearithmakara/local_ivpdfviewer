@@ -26,7 +26,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['completiononscrolltolastpage'] = 'View the last page';
+$string['externalurl'] = 'External URL (public)';
 $string['hidetools'] = 'Hide tools';
+$string['invalidurl'] = 'Please enter a valid URL (starting with http:// or https://)';
 $string['nofile'] = 'No file found. It seems that the file has been deleted.';
 $string['pagenumbers'] = 'Pages';
 $string['pagenumbers_help'] = 'The page numbers to be displayed. For example, 1,4-8,10-12. The page numbers are 1-based.';
@@ -37,5 +39,8 @@ $string['pluginname'] = 'PDF document';
 $string['privacy:metadata'] = 'The PDF document plugin doesn\'t store any personal data.';
 $string['savepageprogress'] = 'Save page progress';
 $string['savepageprogressdesc'] = 'If enabled, the page progress will be saved in the database and the users will be able to resume from the last page they viewed.';
+$string['sourcefile'] = 'Local PDF file';
+$string['sourcetype'] = 'Source type';
+$string['sourceurl'] = 'External URL (public)';
 $string['tutorialurl'] = 'https://www.youtube.com/watch?v=2lKaL6ChhIE';
 $string['fbdescription'] = 'Display a PDF document';

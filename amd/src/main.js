@@ -27,6 +27,13 @@ import {pdfCheck} from 'local_ivpdfviewer/utils';
 
 export default class PdfViewer extends Iframe {
     /**
+     * Called when the edit form is loaded.
+     * @return {void}
+     */
+    onEditFormLoaded() {
+        // Do nothing.
+    }
+    /**
      * Renders the container for the given annotation.
      *
      * @param {Object} annotation - The annotation object.

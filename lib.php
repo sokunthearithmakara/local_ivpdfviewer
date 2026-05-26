@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Callback implementations for form
+ * Callback implementations for pdfviewer.
  *
  * @package    local_ivpdfviewer
  * @copyright  2024 Sokunthearith Makara <sokunthearithmakara@gmail.com>

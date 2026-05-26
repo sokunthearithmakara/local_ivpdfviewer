@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Uninstall script for pdfviewer.
+ * Upgrade script for pdfviewer.
  *
  * @package    local_ivpdfviewer
  * @copyright  2024 Sokunthearith Makara <sokunthearithmakara@gmail.com>
@@ -23,19 +23,20 @@
  */
 
 /**
- * Uninstall function for the local_ivpdfviewer plugin.
+ * Upgrade callback for local_ivpdfviewer.
  *
- * @return bool Always returns true.
+ * @param int $oldversion The currently installed version.
+ * @return bool
  */
-function xmldb_local_ivpdfviewer_uninstall() {
-    $config = array_filter(explode(',', get_config('mod_interactivevideo', 'enablecontenttypes') ?: ''));
-    $config = array_diff($config, ['local_ivpdfviewer']);
-    set_config('enablecontenttypes', implode(',', $config), 'mod_interactivevideo');
+function xmldb_local_ivpdfviewer_upgrade($oldversion) {
+    if ($oldversion < 2026052600) {
+        if (get_config('mod_flexbook', 'version')) {
+            $config = array_filter(explode(',', get_config('mod_flexbook', 'enablecontenttypes') ?: ''));
+            $config[] = 'local_ivpdfviewer';
+            set_config('enablecontenttypes', implode(',', array_unique($config)), 'mod_flexbook');
+        }
 
-    if (get_config('mod_flexbook', 'version')) {
-        $config = array_filter(explode(',', get_config('mod_flexbook', 'enablecontenttypes') ?: ''));
-        $config = array_diff($config, ['local_ivpdfviewer']);
-        set_config('enablecontenttypes', implode(',', $config), 'mod_flexbook');
+        upgrade_plugin_savepoint(true, 2026052600, 'local', 'ivpdfviewer');
     }
 
     return true;

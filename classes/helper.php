@@ -25,6 +25,19 @@ namespace local_ivpdfviewer;
  */
 class helper {
     /**
+     * Normalizes iframeurl values loaded from the database.
+     *
+     * @param mixed $iframeurl
+     * @return string
+     */
+    public static function normalize_iframeurl($iframeurl) {
+        if ($iframeurl === null || $iframeurl === 'null') {
+            return '';
+        }
+        return (string) $iframeurl;
+    }
+
+    /**
      * Adds the PDF viewer elements to a moodleform.
      *
      * @param \MoodleQuickForm $mform The form to add elements to.
@@ -36,6 +49,20 @@ class helper {
         $mform->setType('title', PARAM_TEXT);
         $mform->setDefault('title', get_string('defaulttitle', 'mod_interactivevideo'));
         $mform->addRule('title', get_string('required'), 'required', null, 'client');
+
+        // Source type.
+        $sourcetypes = [
+            'file' => get_string('sourcefile', 'local_ivpdfviewer'),
+            'url' => get_string('sourceurl', 'local_ivpdfviewer'),
+        ];
+        $mform->addElement(
+            'select',
+            'char2',
+            '<i class="bi bi-box-arrow-in-right iv-mr-2"></i>' . get_string('sourcetype', 'local_ivpdfviewer'),
+            $sourcetypes
+        );
+        $mform->setType('char2', PARAM_ALPHA);
+        $mform->setDefault('char2', 'file');
 
         // PDF upload.
         $filemanageroptions = [
@@ -52,13 +79,17 @@ class helper {
             null,
             $filemanageroptions
         );
-        $mform->addRule(
-            'content',
-            get_string('required'),
-            'required',
-            null,
-            'client'
+        $mform->hideIf('content', 'char2', 'eq', 'url');
+
+        // External URL.
+        $mform->addElement(
+            'text',
+            'iframeurl',
+            '<i class="bi bi-globe iv-mr-2"></i>' . get_string('externalurl', 'local_ivpdfviewer'),
+            ['placeholder' => 'https://example.com/document.pdf']
         );
+        $mform->setType('iframeurl', PARAM_TEXT);
+        $mform->hideIf('iframeurl', 'char2', 'eq', 'file');
 
         // PDF page numbers.
         $mform->addElement(
@@ -126,6 +157,10 @@ class helper {
         if ($data->char1 == 'null') {
             $data->char1 = '';
         }
+        $data->iframeurl = self::normalize_iframeurl($data->iframeurl ?? '');
+        if (empty($data->char2) || $data->char2 == 'null') {
+            $data->char2 = !empty($data->iframeurl) ? 'url' : 'file';
+        }
         return $data;
     }
 
@@ -136,14 +171,62 @@ class helper {
      * @param string $component The component name.
      */
     public static function save_pdf_data($fromform, $component) {
-        $draftitemid = $fromform->content;
-        file_save_draft_area_files(
-            $draftitemid,
-            $fromform->contextid,
-            $component,
-            'content',
-            $fromform->id,
-        );
+        global $DB;
+        $sourcetype = isset($fromform->char2) ? $fromform->char2 : 'file';
+        $table = $component === 'mod_flexbook' ? 'flexbook_items' : 'interactivevideo_items';
+
+        if ($sourcetype === 'file') {
+            // Clear URL in DB since source type is file.
+            $DB->set_field($table, 'iframeurl', '', ['id' => $fromform->id]);
+
+            if (!empty($fromform->content)) {
+                file_save_draft_area_files(
+                    $fromform->content,
+                    $fromform->contextid,
+                    $component,
+                    'content',
+                    $fromform->id,
+                );
+            }
+        } else {
+            // Source type is URL. Clear files from the content area.
+            $fs = get_file_storage();
+            $fs->delete_area_files($fromform->contextid, $component, 'content', $fromform->id);
+        }
+    }
+
+    /**
+     * Validates the PDF viewer elements.
+     *
+     * @param array $data The submitted form data.
+     * @param array $files The submitted files.
+     * @return array Array of errors.
+     */
+    public static function validate_pdfviewer_elements($data, $files) {
+        $errors = [];
+        $sourcetype = isset($data['char2']) ? $data['char2'] : 'file';
+
+        if ($sourcetype === 'file') {
+            if (empty($data['content'])) {
+                $errors['content'] = get_string('required');
+            } else {
+                $usercontext = \context_user::instance($GLOBALS['USER']->id);
+                $fs = get_file_storage();
+                $draftfiles = $fs->get_area_files($usercontext->id, 'user', 'draft', $data['content'], 'id', false);
+                if (count($draftfiles) == 0) {
+                    $errors['content'] = get_string('required');
+                }
+            }
+        } else if ($sourcetype === 'url') {
+            $iframeurl = self::normalize_iframeurl($data['iframeurl'] ?? '');
+            if (empty($iframeurl)) {
+                $errors['iframeurl'] = get_string('required');
+            } else if (!preg_match('/^https?:\/\//i', $iframeurl) || !clean_param($iframeurl, PARAM_URL)) {
+                $errors['iframeurl'] = get_string('invalidurl', 'local_ivpdfviewer');
+            }
+        }
+
+        return $errors;
     }
 
     /**

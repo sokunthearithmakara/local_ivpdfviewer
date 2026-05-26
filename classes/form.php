@@ -82,4 +82,17 @@ class form extends \mod_interactivevideo\form\base_form {
         ]);
         $this->close_form();
     }
+
+    /**
+     * Form validation.
+     *
+     * @param array $data
+     * @param array $files
+     * @return array
+     */
+    public function validation($data, $files) {
+        $errors = parent::validation($data, $files);
+        $errors = array_merge($errors, \local_ivpdfviewer\helper::validate_pdfviewer_elements($data, $files));
+        return $errors;
+    }
 }
