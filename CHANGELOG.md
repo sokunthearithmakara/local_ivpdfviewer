@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4+] - 2026-06-08
+
+- Complete Khmer (km) language pack.
+- Require Interactive Video 1.8.1+ (2026060800).
+
 ## [1.4] - 2026-05-26
 
 - Added external PDF URL support as an alternative to uploading a local file.

@@ -27,6 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['completiononscrolltolastpage'] = 'View the last page';
 $string['externalurl'] = 'External URL (public)';
+$string['fbdescription'] = 'Display a PDF document';
 $string['hidetools'] = 'Hide tools';
 $string['invalidurl'] = 'Please enter a valid URL (starting with http:// or https://)';
 $string['nofile'] = 'No file found. It seems that the file has been deleted.';
@@ -43,4 +44,3 @@ $string['sourcefile'] = 'Local PDF file';
 $string['sourcetype'] = 'Source type';
 $string['sourceurl'] = 'External URL (public)';
 $string['tutorialurl'] = 'https://www.youtube.com/watch?v=2lKaL6ChhIE';
-$string['fbdescription'] = 'Display a PDF document';

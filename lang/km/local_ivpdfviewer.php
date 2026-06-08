@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * English language pack for PDF Viewer
+ * Khmer language pack for PDF document
  *
  * @package    local_ivpdfviewer
  * @category   string
@@ -25,14 +25,22 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['completiononscrolltolastpage'] = 'នៅពេលដែលអានដល់ទំព័រចុងក្រោយ';
+$string['completiononscrolltolastpage'] = 'មើលដល់ទំព័រចុងក្រោយ';
 $string['externalurl'] = 'URL ខាងក្រៅ (សាធារណៈ)';
+$string['fbdescription'] = 'បង្ហាញឯកសារ PDF ជាអន្តរកម្ម។ ផ្ទុកឯកសារ PDF ឬភ្ជាប់ URL ខាងក្រៅ។';
+$string['hidetools'] = 'លាក់ឧបករណ៍';
 $string['invalidurl'] = 'សូមបញ្ចូល URL ត្រឹមត្រូវ (ចាប់ផ្តើមដោយ http:// ឬ https://)';
+$string['nofile'] = 'រកមិនឃើញឯកសារ។ ឯកសារនេះប្រហែលជាត្រូវបានលុបចេញរួចហើយ។';
+$string['pagenumbers'] = 'ទំព័រ';
+$string['pagenumbers_help'] = 'បញ្ជាក់ទំព័រដែលត្រូវបង្ហាញ។ ឧ. 1,4-8,10-12។ លេខទំព័រចាប់ផ្តើមពី 1។';
 $string['pdffile'] = 'ឯកសារ PDF';
-$string['pdfviewercontent'] = 'កម្មវិធីបង្ហាញ PDF';
-$string['pdfviewerdescription'] = 'បញ្ចូលឯកសារ PDF រួចបង្ហាញវាក្នុងខណៈណាមួយក្នុងវីដេអូ';
-$string['pluginname'] = 'កម្មវិធីបង្ហាញ PDF';
-$string['privacy:metadata'] = 'PDF Viewer មិនរក្សាទិន្នន័យបុគ្គលទេ។';
-$string['sourcefile'] = 'ឯកសារ PDF ក្នុងមូល';
+$string['pdfviewercontent'] = 'ឯកសារ PDF';
+$string['pdfviewerdescription'] = 'បង្ហាញឯកសារ PDF ជាអន្តរកម្មក្នុងវីដេអូ។ ផ្ទុកឯកសារ PDF ឬភ្ជាប់ URL ខាងក្រៅ។';
+$string['pluginname'] = 'ឯកសារ PDF';
+$string['privacy:metadata'] = 'កម្មវិធីជំនួយឯកសារ PDF មិនរក្សាទុកទិន្នន័យបុគ្គលទេ។';
+$string['savepageprogress'] = 'រក្សាទុកវឌ្ឍនភាពទំព័រ';
+$string['savepageprogressdesc'] = 'ប្រសិនបើបើក វឌ្ឍនភាពទំព័រនឹងត្រូវបានរក្សាទុក ហើយអ្នកប្រើប្រាស់អាចបន្តពីទំព័រដែលបានមើលចុងក្រោយ។';
+$string['sourcefile'] = 'ឯកសារ PDF ក្នុងមូលដ្ឋាន';
 $string['sourcetype'] = 'ប្រភេទប្រភព';
 $string['sourceurl'] = 'URL ខាងក្រៅ (សាធារណៈ)';
+$string['tutorialurl'] = 'https://www.youtube.com/watch?v=2lKaL6ChhIE';
