@@ -53,6 +53,41 @@ class main extends \ivplugin_richtext\main {
     }
 
     /**
+     * Flexbook DND / programmatic creation fields merged from flexbook_defaults.
+     *
+     * @return string[]
+     */
+    public function get_dnd_default_fields(): array {
+        return array_merge(parent::get_dnd_default_fields(), ['char1']);
+    }
+
+    /**
+     * Apply completion and advanced defaults after DND merge.
+     *
+     * @param \stdClass $data
+     * @return void
+     */
+    protected function apply_creation_defaults(\stdClass $data): void {
+        $courseid = (int) ($data->courseid ?? 0);
+        if (!$this->has_flexbook_course_defaults($courseid, 'pdfviewer')) {
+            $advanced = $this->flexbook_advanced();
+            $advanced['savepagebefore'] = 0;
+            $advanced['savepageafter'] = 0;
+            $advanced['hidetools'] = 0;
+            $data->advanced = json_encode($advanced);
+        } else {
+            $this->normalize_merged_completion($data);
+            if (empty($data->advanced)) {
+                $advanced = $this->flexbook_advanced();
+                $advanced['savepagebefore'] = 0;
+                $advanced['savepageafter'] = 0;
+                $advanced['hidetools'] = 0;
+                $data->advanced = json_encode($advanced);
+            }
+        }
+    }
+
+    /**
      * Create a new interaction instance.
      *
      * @param array $data The data for the new instance.
@@ -63,16 +98,11 @@ class main extends \ivplugin_richtext\main {
         $data = (object) $data;
         $draftitemid = $data->draftitemid;
         unset($data->draftitemid);
-        $data->char1 = ''; // Page number.
 
-        // Form a default advanced settings.
-        if (empty($data->advanced)) {
-            $data->advanced = $this->flexbook_advanced();
-            $data->advanced['savepagebefore'] = 0;
-            $data->advanced['savepageafter'] = 0;
-            $data->advanced['hidetools'] = 0;
+        $this->apply_creation_defaults($data);
 
-            $data->advanced = json_encode($data->advanced);
+        if (!$this->has_flexbook_course_defaults((int) ($data->courseid ?? 0), 'pdfviewer')) {
+            $data->char1 = '';
         }
 
         $data->id = $DB->insert_record('flexbook_items', $data);
