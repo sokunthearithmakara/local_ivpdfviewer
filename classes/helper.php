@@ -103,6 +103,23 @@ class helper {
         $mform->setType('char1', PARAM_TEXT);
         $mform->addHelpButton('char1', 'pagenumbers', 'local_ivpdfviewer');
 
+        // Audio files (subfolders = lessons/groups, files = tracks).
+        $audiofilemanageroptions = [
+            'maxbytes'       => $PAGE->course->maxbytes,
+            'subdirs'        => 1,
+            'maxfiles'       => EDITOR_UNLIMITED_FILES,
+            // Only formats browsers can play; the player is the browser's own audio element.
+            'accepted_types' => ['html_audio'],
+        ];
+        $mform->addElement(
+            'filemanager',
+            'itext1',
+            '<i class="bi bi-headphones iv-mr-2"></i>' . get_string('audiofiles', 'local_ivpdfviewer'),
+            null,
+            $audiofilemanageroptions
+        );
+        $mform->addHelpButton('itext1', 'audiofiles', 'local_ivpdfviewer');
+
         // Save page progress.
         $group = [];
         $group[] = $mform->createElement(
@@ -151,9 +168,30 @@ class helper {
     public static function prepare_pdf_data($data, $component) {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
-        $draftitemid = file_get_submitted_draft_itemid('content');
+        $draftitemid = !empty($data->content) && is_numeric($data->content)
+            ? (int) $data->content
+            : file_get_submitted_draft_itemid('content');
         file_prepare_draft_area($draftitemid, $data->contextid, $component, 'content', $data->id);
         $data->content = $draftitemid;
+
+        $submittedaudiodraft = !empty($data->itext1) && is_numeric($data->itext1)
+            ? (int) $data->itext1
+            : file_get_submitted_draft_itemid('itext1');
+        $isinitialprepare = empty($submittedaudiodraft);
+        $audiodraftitemid = $submittedaudiodraft;
+        file_prepare_draft_area(
+            $audiodraftitemid,
+            $data->contextid,
+            $component,
+            'itext1',
+            $data->id,
+            ['subdirs' => 1]
+        );
+        if ($isinitialprepare) {
+            self::unpack_draft_audio_folders($audiodraftitemid);
+        }
+        $data->itext1 = $audiodraftitemid;
+
         if ($data->char1 == 'null') {
             $data->char1 = '';
         }
@@ -193,6 +231,324 @@ class helper {
             $fs = get_file_storage();
             $fs->delete_area_files($fromform->contextid, $component, 'content', $fromform->id);
         }
+
+        // Save audio files into itext1 and flatten subfolder paths so .ivz/.fbz archives preserve groups without collisions.
+        if (!empty($fromform->itext1)) {
+            file_save_draft_area_files(
+                $fromform->itext1,
+                $fromform->contextid,
+                $component,
+                'itext1',
+                $fromform->id,
+                ['subdirs' => 1]
+            );
+            self::flatten_stored_audio_folders((int) $fromform->contextid, $component, (int) $fromform->id);
+        }
+    }
+
+    /**
+     * Flattens subfolder audio files in the stored itext1 area into root '/' with '@@'-delimited filenames.
+     *
+     * @param int $contextid
+     * @param string $component
+     * @param int $itemid
+     * @return void
+     */
+    public static function flatten_stored_audio_folders(int $contextid, string $component, int $itemid): void {
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($contextid, $component, 'itext1', $itemid, 'id ASC', true);
+        $subdirs = [];
+
+        foreach ($files as $file) {
+            if ($file->is_directory()) {
+                if ($file->get_filepath() !== '/') {
+                    $subdirs[] = $file;
+                }
+                continue;
+            }
+            if ($file->get_filepath() !== '/') {
+                $prefix = str_replace('/', '@@', trim($file->get_filepath(), '/'));
+                $flatname = clean_param($prefix . '@@' . $file->get_filename(), PARAM_FILE);
+                $existing = $fs->get_file($contextid, $component, 'itext1', $itemid, '/', $flatname);
+                if ($existing && $existing->get_id() !== $file->get_id()) {
+                    $existing->delete();
+                }
+                $file->rename('/', $flatname);
+            }
+        }
+
+        foreach ($subdirs as $dir) {
+            $dir->delete();
+        }
+    }
+
+    /**
+     * Unpacks '@@'-delimited root audio files in the user's draft area back into draft subfolders for editing.
+     *
+     * @param int $draftitemid
+     * @return void
+     */
+    public static function unpack_draft_audio_folders(int $draftitemid): void {
+        global $USER;
+        if (empty($draftitemid) || empty($USER->id)) {
+            return;
+        }
+        $usercontext = \context_user::instance($USER->id);
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id ASC', false);
+
+        foreach ($files as $file) {
+            $filename = $file->get_filename();
+            if ($file->get_filepath() === '/' && strpos($filename, '@@') !== false) {
+                $parts = explode('@@', $filename);
+                $actualfilename = array_pop($parts);
+                $parts = array_values(array_filter(array_map('trim', $parts), 'strlen'));
+                if (empty($parts) || $actualfilename === '') {
+                    continue;
+                }
+
+                $accum = '/';
+                foreach ($parts as $segment) {
+                    $accum .= $segment . '/';
+                    $fs->create_directory($usercontext->id, 'user', 'draft', $draftitemid, $accum);
+                }
+
+                $existing = $fs->get_file($usercontext->id, 'user', 'draft', $draftitemid, $accum, $actualfilename);
+                if (!$existing) {
+                    $file->rename($accum, $actualfilename);
+                }
+            }
+        }
+    }
+
+    /**
+     * Parses the configured Google Font site setting (`{font-family}|Google Font URL`).
+     *
+     * @return array{family: string, url: string}|null
+     */
+    public static function get_google_font_config(): ?array {
+        $raw = (string) get_config('local_ivpdfviewer', 'googlefont');
+        if (trim($raw) === '' || strpos($raw, '|') === false) {
+            return null;
+        }
+        [$rawfamily, $url] = explode('|', $raw, 2);
+        $url = clean_param(trim($url), PARAM_URL);
+        if ($url === '') {
+            return null;
+        }
+
+        $rawfamily = trim($rawfamily);
+        if ($rawfamily === '') {
+            return null;
+        }
+
+        $genericfamilies = ['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui'];
+        $parts = explode(',', $rawfamily);
+        $cleanparts = [];
+        foreach ($parts as $part) {
+            $name = trim($part, " \t\n\r\0\x0B'\"");
+            if ($name === '') {
+                continue;
+            }
+            if (in_array(strtolower($name), $genericfamilies, true)) {
+                $cleanparts[] = strtolower($name);
+            } else {
+                $cleanparts[] = '"' . addslashes($name) . '"';
+            }
+        }
+
+        if (empty($cleanparts)) {
+            return null;
+        }
+
+        $hasgeneric = false;
+        foreach ($cleanparts as $part) {
+            if (in_array($part, $genericfamilies, true)) {
+                $hasgeneric = true;
+                break;
+            }
+        }
+        if (!$hasgeneric) {
+            $cleanparts[] = 'sans-serif';
+        }
+
+        return [
+            'family' => implode(', ', $cleanparts),
+            'url' => $url,
+        ];
+    }
+
+    /**
+     * The capability needed to edit an item's audio map in a context.
+     *
+     * @param \context $context The item's context.
+     * @return string
+     */
+    public static function audio_map_capability(\context $context): string {
+        if ($context->contextlevel == CONTEXT_MODULE) {
+            $cm = get_coursemodule_from_id('', $context->instanceid, 0, false, MUST_EXIST);
+            if ($cm->modname === 'interactivevideo' || $cm->modname === 'flexbook') {
+                return 'mod/' . $cm->modname . ':edit';
+            }
+        }
+        return 'moodle/course:manageactivities';
+    }
+
+    /**
+     * Whether the current user may edit audio maps in a context.
+     *
+     * Only decides what the viewer shows; the save service checks again.
+     *
+     * @param int $contextid
+     * @return bool
+     */
+    public static function can_edit_audio_map(int $contextid): bool {
+        $context = \context::instance_by_id($contextid, IGNORE_MISSING);
+        if (!$context) {
+            return false;
+        }
+        return has_capability(self::audio_map_capability($context), $context);
+    }
+
+    /**
+     * What the viewer's map editor needs to save: where the item lives and its labels.
+     *
+     * @param int $contextid
+     * @param int $itemid
+     * @param string $component mod_interactivevideo or mod_flexbook.
+     * @return array
+     */
+    public static function get_audio_map_editor_config(int $contextid, int $itemid, string $component): array {
+        return [
+            'contextid' => $contextid,
+            'itemid' => $itemid,
+            'plugin' => $component === 'mod_flexbook' ? 'flexbook' : 'interactivevideo',
+            'strings' => [
+                'editpagelinks' => get_string('editpagelinks', 'local_ivpdfviewer'),
+                'linktopage' => get_string('linktopage', 'local_ivpdfviewer', '{page}'),
+                'removepagelink' => get_string('removepagelink', 'local_ivpdfviewer'),
+                'unsavedpagelinks' => get_string('unsavedpagelinks', 'local_ivpdfviewer'),
+                'pagelinkssaved' => get_string('pagelinkssaved', 'local_ivpdfviewer'),
+                'pagelinksskipped' => get_string('pagelinksskipped', 'local_ivpdfviewer', '{count}'),
+                'savechanges' => get_string('savechanges'),
+                'cancel' => get_string('cancel'),
+            ],
+        ];
+    }
+
+    /**
+     * Lists the audio files of an item with their logical lesson folder and map key.
+     *
+     * @param int $contextid
+     * @param string $component
+     * @param int $itemid
+     * @return array List of ['file' => \stored_file, 'group' => string, 'filename' => string, 'key' => string].
+     */
+    public static function get_audio_files(int $contextid, string $component, int $itemid): array {
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($contextid, $component, 'itext1', $itemid, 'id ASC', false);
+        $located = [];
+        foreach ($files as $file) {
+            $location = audio_map::locate($file->get_filepath(), $file->get_filename());
+            $located[] = [
+                'file' => $file,
+                'group' => $location['group'],
+                'filename' => $location['file'],
+                'key' => $location['key'],
+            ];
+        }
+        return $located;
+    }
+
+    /**
+     * Builds the structured audio playlist payload for an interaction item.
+     *
+     * @param int $contextid
+     * @param string $component
+     * @param int $itemid
+     * @param string|null $rawmap The stored audio map (text1), see audio_map.
+     * @return array
+     */
+    public static function get_audio_playlist(int $contextid, string $component, int $itemid, ?string $rawmap = ''): array {
+        $files = self::get_audio_files($contextid, $component, $itemid);
+        if (empty($files)) {
+            return [];
+        }
+
+        $map = audio_map::decode($rawmap);
+        $groupsmap = [];
+        foreach ($files as $entry) {
+            $file = $entry['file'];
+            $title = pathinfo($entry['filename'], PATHINFO_FILENAME);
+            $cues = $map['tracks'][$entry['key']] ?? [];
+            $groupsmap[$entry['group']][] = [
+                'key' => $entry['key'],
+                'title' => $title === '' ? $entry['filename'] : $title,
+                'url' => \moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                )->out(false),
+                'page' => $cues[0]['page'] ?? null,
+                'cues' => $cues,
+            ];
+        }
+
+        // Lesson folders in natural order, then loose files at the root as a last group.
+        $roottracks = $groupsmap[''] ?? [];
+        unset($groupsmap['']);
+        uksort($groupsmap, 'strnatcasecmp');
+        $bytitle = fn(array $a, array $b): int => strnatcasecmp($a['title'], $b['title']);
+
+        $groups = [];
+        foreach ($groupsmap as $path => $tracks) {
+            usort($tracks, $bytitle);
+            $groups[] = [
+                'key' => (string) $path,
+                'title' => str_replace('/', ' / ', (string) $path),
+                'page' => $map['groups'][$path] ?? null,
+                'tracks' => $tracks,
+            ];
+        }
+        if (!empty($roottracks)) {
+            usort($roottracks, $bytitle);
+            $groups[] = [
+                'key' => '',
+                'title' => get_string('audiofiles', 'local_ivpdfviewer'),
+                'page' => $map['groups'][''] ?? null,
+                'ungrouped' => empty($groupsmap),
+                'tracks' => $roottracks,
+            ];
+        }
+
+        return [
+            'groups' => $groups,
+            'strings' => [
+                'contents' => get_string('contents', 'local_ivpdfviewer'),
+                'hidecontents' => get_string('hidecontents', 'local_ivpdfviewer'),
+                'showcontents' => get_string('showcontents', 'local_ivpdfviewer'),
+                'paused' => get_string('paused', 'local_ivpdfviewer'),
+                'playing' => get_string('playing', 'local_ivpdfviewer'),
+                'playpause' => get_string('playpause', 'local_ivpdfviewer'),
+                'gotopage' => get_string('gotopage', 'local_ivpdfviewer', '{page}'),
+                'playbackspeed' => get_string('playbackspeed', 'local_ivpdfviewer'),
+                'repeat' => get_string('repeat', 'local_ivpdfviewer'),
+                'lesson' => get_string('lesson', 'local_ivpdfviewer'),
+                'lessons' => get_string('lessons', 'local_ivpdfviewer', '{count}'),
+                'track' => get_string('track', 'local_ivpdfviewer'),
+                'tracks' => get_string('tracks', 'local_ivpdfviewer', '{count}'),
+                'trackxofy' => get_string('trackxofy', 'local_ivpdfviewer', (object) [
+                    'current' => '{current}',
+                    'total' => '{total}',
+                ]),
+                'pageshort' => get_string('pageshort', 'local_ivpdfviewer', '{page}'),
+                'notlinked' => get_string('notlinked', 'local_ivpdfviewer'),
+                'pagenotshown' => get_string('pagenotshown', 'local_ivpdfviewer', '{page}'),
+            ],
+        ];
     }
 
     /**

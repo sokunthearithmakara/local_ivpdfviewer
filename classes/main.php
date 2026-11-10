@@ -130,10 +130,11 @@ class main extends \ivplugin_richtext\main {
      * @return string The content.
      */
     public function get_content($arg) {
-        global $CFG;
+        global $CFG, $DB;
         $lang = current_language();
         $url = '';
 
+        $component = 'mod_' . (isset($arg['plugin']) ? $arg['plugin'] : 'interactivevideo');
         $iframeurl = helper::normalize_iframeurl($arg['iframeurl'] ?? '');
         if (!empty($iframeurl)) {
             $url = $iframeurl;
@@ -141,7 +142,7 @@ class main extends \ivplugin_richtext\main {
             $fs = get_file_storage();
             $files = $fs->get_area_files(
                 $arg["contextid"],
-                'mod_' . (isset($arg['plugin']) ? $arg['plugin'] : 'interactivevideo'),
+                $component,
                 'content',
                 $arg["id"],
                 'id DESC',
@@ -163,10 +164,27 @@ class main extends \ivplugin_richtext\main {
         if ($url) {
             // Encode URL for PDF.js.
             $url = urlencode($url);
+            $contextid = (int) ($arg['contextid'] ?? 0);
+            $itemid = (int) ($arg['id'] ?? 0);
+            // The map is read from the database, not from the item the browser sent, so a map saved
+            // from the viewer shows the next time the interaction opens, without a page reload.
+            $table = $component === 'mod_flexbook' ? 'flexbook_items' : 'interactivevideo_items';
+            $rawmap = $itemid ? $DB->get_field($table, 'text1', ['id' => $itemid, 'contextid' => $contextid]) : '';
+            $playlist = helper::get_audio_playlist($contextid, $component, $itemid, (string) $rawmap);
+            if (!empty($playlist)) {
+                $playlist['canedit'] = helper::can_edit_audio_map($contextid);
+                if ($playlist['canedit']) {
+                    $playlist['editor'] = helper::get_audio_map_editor_config($contextid, $itemid, $component);
+                }
+            }
+            $audiodata = !empty($playlist) ? ' data-audio="' . s(json_encode($playlist)) . '"' : '';
+            $fontconfig = helper::get_google_font_config();
+            $fontdata = !empty($fontconfig) ? ' data-font="' . s(json_encode($fontconfig)) . '"' : '';
             return '<iframe id="iframe" src="' . $CFG->wwwroot .
                 '/local/ivpdfviewer/libraries/pdfjs/web/viewer.html?file=' .
                 $url . '#locale=' . $lang .
-                '" style="width: 100%; height: 100%" frameborder="0" allow="autoplay" class="iv-rounded-0"></iframe>';
+                '" style="width: 100%; height: 100%" frameborder="0" class="iv-rounded-0"' .
+                $audiodata . $fontdata . '></iframe>';
         }
 
         return '<div class="alert alert-danger" role="alert">' . get_string('nofile', 'local_ivpdfviewer') . '</div>';

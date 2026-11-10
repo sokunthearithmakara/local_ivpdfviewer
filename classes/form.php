@@ -30,6 +30,8 @@ class form extends \mod_interactivevideo\form\base_form {
      */
     public function set_data_for_dynamic_submission(): void {
         $data = $this->set_data_default();
+        $data->content = $this->optional_param('content', 0, PARAM_INT);
+        $data->itext1 = $this->optional_param('itext1', 0, PARAM_INT);
         $data = \local_ivpdfviewer\helper::prepare_pdf_data($data, 'mod_interactivevideo');
         $this->set_data($data);
     }
@@ -51,8 +53,12 @@ class form extends \mod_interactivevideo\form\base_form {
      * @return void
      */
     public function process_dynamic_submission() {
+        $rawdata = $this->get_data();
         $fromform = parent::process_dynamic_submission();
+        $fromform->itext1 = $rawdata->itext1 ?? $this->optional_param('itext1', 0, PARAM_INT);
+        $fromform->content = $rawdata->content ?? $fromform->content;
         \local_ivpdfviewer\helper::save_pdf_data($fromform, 'mod_interactivevideo');
+        unset($fromform->itext1);
         return $fromform;
     }
 

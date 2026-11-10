@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5] - 2026-11-10
+
+- Audio accompaniment: upload audio files (subfolders become lessons) and play them in a Contents sidebar and player bar inside the PDF viewer.
+- Audio-to-page map stored as JSON in `text1`, keyed by lesson folder and file path, with per-track time cues. Replaces the free-text mapping field.
+- New web service `local_ivpdfviewer_save_audio_map` for saving the map from the viewer.
+- Site setting to load a Google Font in the viewer.
+- Requires Interactive Video 2.3.2 (2026111000).
+
 ## [1.4+] - 2026-06-08
 
 - Complete Khmer (km) language pack.
