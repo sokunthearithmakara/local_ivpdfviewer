@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 - Audio-to-page map stored as JSON in `text1`, keyed by lesson folder and file path, with per-track time cues. Replaces the free-text mapping field.
 - New web service `local_ivpdfviewer_save_audio_map` for saving the map from the viewer.
 - Site setting to load a Google Font in the viewer.
-- Requires Interactive Video 2.3.2 (2026111000).
+- Requires Interactive Video 2.4 (2026111000).
 
 ## [1.4+] - 2026-06-08
 
